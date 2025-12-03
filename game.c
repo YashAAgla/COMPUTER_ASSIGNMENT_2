@@ -3,87 +3,102 @@
 #include <windows.h>
 #include <stdlib.h>
 #include <time.h>
-/*for bg sound*/
-#include <mmsystem.h>
-
-/*to remove flicker*/
-void clear_screen_fast() {
-    HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
-    COORD pos = {0, 0};
-    SetConsoleCursorPosition(h, pos);
-}
 
 int main() {
-	system("color 4F");
-	PlaySound(TEXT("bg.wav"), NULL, SND_ASYNC | SND_LOOP);
     srand(time(0));
 
-    int x = 1;              // player position (0 to 2)
-    int step = 0;           // obstacle vertical movement
-    int obstaclePos = rand() % 3;   // 0,1,2 lane
+    while (1) {     // 🔁 RESTART LOOP START
 
-    while (1) {
+        int x = 1;
+        int step = 0;
+        int obstaclePos = rand() % 3;
+        int score = 0;
+        int lives = 3;
 
-        // ---- INPUT ----
-        if (_kbhit()) {
-            char ch = getch();
-
-            if (ch == 75 && x > 0)        // LEFT arrow
-                x--;
-
-            if (ch == 77 && x < 2)        // RIGHT arrow
-                x++;
+        // Load high score
+        int highScore = 0;
+        FILE *f = fopen("highscore.txt", "r");
+        if (f != NULL) {
+            fscanf(f, "%d", &highScore);
+            fclose(f);
         }
 
-        // ---- DRAW ----
-		// system("cls");
-		clear_screen_fast();
-        printf("|--- --- ---|\n");
+        // ----------- GAME LOOP ------------
+        while (1) {
+            if (_kbhit()) {
+                int ch = getch();
+                if (ch == 224) {
+                    ch = getch();
+                    if (ch == 75 && x > 0) x--;
+                    if (ch == 77 && x < 2) x++;
+                }
+            }
 
-        for (int i = 0; i < 10; i++) {
-            if (i == step) {
+            system("cls");
+            printf("|--- --- ---|\n");
 
-                if (obstaclePos == 0)
-                    printf("| %c        |\n", 1);
+            for (int i = 0; i < 10; i++) {
+                if (i == step) {
+                    if (obstaclePos == 0) printf("| @         |\n");
+                    else if (obstaclePos == 1) printf("|     @     |\n");
+                    else printf("|        @  |\n");
+                } else {
+                    printf("|           |\n");
+                }
+            }
 
-                else if (obstaclePos == 1)
-                    printf("|     %c    |\n", 1);
+            if (x == 0) printf("| *         |\n");
+            else if (x == 1) printf("|     *     |\n");
+            else printf("|        *  |\n");
+             
+            printf("Score: %d   Lives: %d   High Score: %d\n", score, lives, highScore);
+            if(lives==0){
+                break;
+            }
+            Sleep(140);
+            step++;
 
-                else if (obstaclePos == 2)
-                    printf("|        %c |\n", 1);
+            // Collision check
+            if (step >= 10) {
+                if (x == obstaclePos) {
+                    lives--;
+                    if (lives <= 0) {
+                        printf("\nGAME OVER!\n");
+                    }
+                    printf("\nYou lost a life! Lives left: %d\n", lives);
+                    Sleep(500);
+                } else {
+                    score++;
+                }
 
-            } else {
-                printf("|           |\n");
+                step = 0;
+                obstaclePos = rand() % 3;
             }
         }
+        // ----------- GAME LOOP END -----------
 
-        // ---- PLAYER ----
-        if (x == 0)
-            printf("| %c         |\n", 6);
-        else if (x == 1)
-            printf("|     %c     |\n", 6);
-        else if (x == 2)
-            printf("|        %c  |\n", 6);
-
-        // ---- COLLISION ----
-        if (step == 10 && x == obstaclePos) {
-        	PlaySound(NULL, NULL, 0);  // stop background
-			PlaySound(TEXT("impact.wav"), NULL, SND_ASYNC);
-        	Sleep(2500);
-            printf("\nGAME OVER!\n");
-            break;
+        // Save high score
+        if (score > highScore) {
+            FILE *fw = fopen("highscore.txt", "w");
+            if (fw != NULL) {
+                fprintf(fw, "%d", score);
+                fclose(fw);
+            }
+            printf("New High Score!\n");
         }
 
-        Sleep(120);
+        printf("Final Score: %d\n", score);
+        printf("High Score: %d\n", (score > highScore ? score : highScore));
 
-        // Move obstacle down
-        step++;
+        // ------------ RESTART OPTION -------------
+        printf("\nPlay again? (Y/N): ");
+        char again = getch();
 
-        // Reset when reaches bottom
-        if (step > 10) {
-            step = 0;
-            obstaclePos = rand() % 3; // new lane
+        if (again == 'n' || again == 'N') {
+            printf("\nThanks for playing!\n");
+            break;   // break OUTSIDE restart loop → EXIT PROGRAM
         }
+        // If 'Y', loop continues automatically
     }
 
     return 0;
